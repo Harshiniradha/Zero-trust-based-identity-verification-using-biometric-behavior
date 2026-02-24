@@ -1,0 +1,261 @@
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useExam } from '@/context/ExamContext';
+import { examQuestions } from '@/data/mockData';
+import { captureKeystrokeProfile, compareProfiles, calculateRiskIncrease, KeyEvent } from '@/lib/keystrokeAnalyzer';
+import { Shield, AlertTriangle, Clock, Activity } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import ViolationOverlay from '@/components/ViolationOverlay';
+
+const ExamPage = () => {
+  const { currentUser, addViolationLog, startSession, updateSessionRisk, terminateSession, logout } = useExam();
+  const navigate = useNavigate();
+
+  const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [riskScore, setRiskScore] = useState(0);
+  const [violated, setViolated] = useState(false);
+  const [violationReason, setViolationReason] = useState('');
+  const [timeElapsed, setTimeElapsed] = useState(0);
+  const [submitted, setSubmitted] = useState(false);
+  const keystrokeBuffer = useRef<KeyEvent[]>([]);
+  const startTimeRef = useRef(Date.now());
+  const riskRef = useRef(0);
+
+  const autoTerminate = useCallback((reason: string) => {
+    if (violated) return;
+    setViolated(true);
+    setViolationReason(reason);
+
+    if (currentUser) {
+      addViolationLog({
+        userId: currentUser.id,
+        userName: currentUser.name,
+        reason,
+        timestamp: new Date().toISOString(),
+        riskScoreAtTermination: riskRef.current,
+        sessionDuration: Math.floor((Date.now() - startTimeRef.current) / 1000),
+      });
+      terminateSession(currentUser.id);
+    }
+
+    setTimeout(() => {
+      logout();
+      navigate('/');
+    }, 5000);
+  }, [violated, currentUser, addViolationLog, terminateSession, logout, navigate]);
+
+  // Start session
+  useEffect(() => {
+    if (currentUser) {
+      startSession(currentUser.id, currentUser.name);
+    }
+  }, [currentUser, startSession]);
+
+  // Timer
+  useEffect(() => {
+    const timer = setInterval(() => setTimeElapsed(t => t + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Fullscreen
+  useEffect(() => {
+    const enterFullscreen = () => {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    };
+    enterFullscreen();
+    return () => { document.exitFullscreen?.().catch(() => {}); };
+  }, []);
+
+  // Disable right-click, copy, paste
+  useEffect(() => {
+    const prevent = (e: Event) => e.preventDefault();
+    document.addEventListener('contextmenu', prevent);
+    document.addEventListener('copy', prevent);
+    document.addEventListener('paste', prevent);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'PrintScreen' || (e.ctrlKey && (e.key === 'c' || e.key === 'v' || e.key === 'p'))) {
+        e.preventDefault();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('contextmenu', prevent);
+      document.removeEventListener('copy', prevent);
+      document.removeEventListener('paste', prevent);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  // Tab switch / blur detection
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.hidden) autoTerminate('Tab Switch Detected');
+    };
+    const handleBlur = () => autoTerminate('Window Blur Detected');
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('blur', handleBlur);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, [autoTerminate]);
+
+  // Keystroke monitoring
+  useEffect(() => {
+    const handleDown = (e: KeyboardEvent) => {
+      keystrokeBuffer.current.push({ key: e.key, type: 'down', timestamp: performance.now() });
+    };
+    const handleUp = (e: KeyboardEvent) => {
+      keystrokeBuffer.current.push({ key: e.key, type: 'up', timestamp: performance.now() });
+    };
+    document.addEventListener('keydown', handleDown);
+    document.addEventListener('keyup', handleUp);
+    return () => {
+      document.removeEventListener('keydown', handleDown);
+      document.removeEventListener('keyup', handleUp);
+    };
+  }, []);
+
+  // Periodic biometric check
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!currentUser?.masterProfile || keystrokeBuffer.current.length < 10) return;
+
+      const currentProfile = captureKeystrokeProfile(keystrokeBuffer.current);
+      const result = compareProfiles(currentUser.masterProfile, currentProfile);
+      const increase = calculateRiskIncrease(result.overallDeviation);
+      
+      const newRisk = Math.min(riskRef.current + increase, 100);
+      riskRef.current = newRisk;
+      setRiskScore(newRisk);
+      updateSessionRisk(currentUser.id, newRisk, result.overallDeviation);
+
+      if (newRisk >= 100) {
+        autoTerminate('Biometric Mismatch - Risk Score 100%');
+      }
+
+      keystrokeBuffer.current = [];
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [currentUser, updateSessionRisk, autoTerminate]);
+
+  const handleSelectAnswer = (questionId: number, optionIdx: number) => {
+    setAnswers(prev => ({ ...prev, [questionId]: optionIdx }));
+  };
+
+  const handleSubmit = () => {
+    setSubmitted(true);
+    if (currentUser) terminateSession(currentUser.id);
+    setTimeout(() => {
+      logout();
+      navigate('/');
+    }, 3000);
+  };
+
+  const formatTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+
+  if (violated) {
+    return <ViolationOverlay reason={violationReason} />;
+  }
+
+  if (submitted) {
+    const score = examQuestions.reduce((acc, q) => acc + (answers[q.id] === q.correctAnswer ? 1 : 0), 0);
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center animate-slide-up">
+          <Shield className="w-16 h-16 text-success mx-auto mb-4" />
+          <h1 className="text-2xl font-bold font-mono text-foreground">EXAM SUBMITTED</h1>
+          <p className="text-muted-foreground font-mono mt-2">Score: {score}/{examQuestions.length}</p>
+          <p className="text-xs text-muted-foreground font-mono mt-4">Redirecting to login...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Top bar */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border px-4 py-3">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Shield className="w-5 h-5 text-primary" />
+            <span className="font-mono text-sm text-foreground font-semibold">SECURE EXAM</span>
+          </div>
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-muted-foreground" />
+              <span className="font-mono text-sm text-foreground">{formatTime(timeElapsed)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Activity className="w-4 h-4 text-muted-foreground" />
+              <span className="font-mono text-xs text-muted-foreground">RISK:</span>
+              <div className="w-24 h-2 bg-secondary rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    riskScore < 50 ? 'bg-success' : riskScore < 80 ? 'bg-warning' : 'bg-destructive'
+                  }`}
+                  style={{ width: `${riskScore}%` }}
+                />
+              </div>
+              <span className={`font-mono text-xs font-bold ${
+                riskScore < 50 ? 'text-success' : riskScore < 80 ? 'text-warning' : 'text-destructive'
+              }`}>
+                {riskScore.toFixed(0)}%
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Questions */}
+      <div className="pt-20 pb-24 px-4 max-w-4xl mx-auto">
+        <div className="flex items-center gap-2 mb-6">
+          <AlertTriangle className="w-4 h-4 text-warning" />
+          <p className="text-xs font-mono text-warning">
+            WARNING: Tab switching, window blur, or biometric mismatch will terminate your session.
+          </p>
+        </div>
+
+        <div className="space-y-6">
+          {examQuestions.map((q, qi) => (
+            <div key={q.id} className="bg-card border border-border rounded-lg p-6 animate-slide-up" style={{ animationDelay: `${qi * 0.05}s` }}>
+              <p className="font-mono text-sm text-primary mb-1">Question {q.id}</p>
+              <p className="text-foreground font-medium mb-4">{q.question}</p>
+              <div className="space-y-2">
+                {q.options.map((opt, oi) => (
+                  <button
+                    key={oi}
+                    onClick={() => handleSelectAnswer(q.id, oi)}
+                    className={`w-full text-left p-3 rounded-md border font-mono text-sm transition-all ${
+                      answers[q.id] === oi
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border bg-secondary text-secondary-foreground hover:border-primary/50'
+                    }`}
+                  >
+                    <span className="mr-3 text-muted-foreground">{String.fromCharCode(65 + oi)}.</span>
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Submit bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border px-4 py-3 z-50">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <span className="font-mono text-xs text-muted-foreground">
+            {Object.keys(answers).length}/{examQuestions.length} answered
+          </span>
+          <Button onClick={handleSubmit} className="font-mono uppercase tracking-wider">
+            Submit Exam
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ExamPage;
