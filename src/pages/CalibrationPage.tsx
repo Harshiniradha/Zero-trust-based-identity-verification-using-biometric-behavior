@@ -1,9 +1,9 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useExam } from '@/context/ExamContext';
 import { CALIBRATION_PARAGRAPH } from '@/data/mockData';
-import { captureKeystrokeProfile, compareProfiles, KeyEvent } from '@/lib/keystrokeAnalyzer';
-import { Fingerprint, CheckCircle, XCircle, Keyboard } from 'lucide-react';
+import { captureKeystrokeProfile, compareProfiles, KeyEvent, MouseEvent2 } from '@/lib/keystrokeAnalyzer';
+import { Fingerprint, CheckCircle, XCircle, Keyboard, Mouse } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const CalibrationPage = () => {
@@ -13,8 +13,33 @@ const CalibrationPage = () => {
   const [status, setStatus] = useState<'typing' | 'analyzing' | 'success' | 'fail'>('typing');
   const [message, setMessage] = useState('');
   const keystrokeEvents = useRef<KeyEvent[]>([]);
+  const mouseEvents = useRef<MouseEvent2[]>([]);
+  const startTime = useRef<number>(0);
+  const [mouseDataCount, setMouseDataCount] = useState(0);
+
+  // Track mouse movements
+  useEffect(() => {
+    const handleMouseMove = (e: globalThis.MouseEvent) => {
+      if (status === 'typing') {
+        mouseEvents.current.push({ x: e.clientX, y: e.clientY, timestamp: performance.now() });
+        setMouseDataCount(mouseEvents.current.length);
+      }
+    };
+    // Throttle to every 50ms
+    let lastTime = 0;
+    const throttled = (e: globalThis.MouseEvent) => {
+      const now = performance.now();
+      if (now - lastTime > 50) {
+        lastTime = now;
+        handleMouseMove(e);
+      }
+    };
+    document.addEventListener('mousemove', throttled);
+    return () => document.removeEventListener('mousemove', throttled);
+  }, [status]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (keystrokeEvents.current.length === 0) startTime.current = performance.now();
     if (e.key.length === 1 || e.key === 'Backspace' || e.key === ' ') {
       keystrokeEvents.current.push({ key: e.key, type: 'down', timestamp: performance.now() });
     }
@@ -34,7 +59,8 @@ const CalibrationPage = () => {
     if (!currentUser) return;
     setStatus('analyzing');
 
-    const profile = captureKeystrokeProfile(keystrokeEvents.current);
+    const durationMs = performance.now() - startTime.current;
+    const profile = captureKeystrokeProfile(keystrokeEvents.current, mouseEvents.current, durationMs);
 
     if (currentUser.masterProfile) {
       const result = compareProfiles(currentUser.masterProfile, profile);
@@ -49,14 +75,15 @@ const CalibrationPage = () => {
           setStatus('typing');
           setTypedText('');
           keystrokeEvents.current = [];
+          mouseEvents.current = [];
+          setMouseDataCount(0);
         }, 3000);
       }
     } else {
-      // First calibration — save as master profile
       updateUserProfile(currentUser.id, profile);
       markCalibrated(currentUser.id);
       setStatus('success');
-      setMessage('Biometric profile created successfully. Redirecting to exam...');
+      setMessage(`Biometric profile created! WPM: ${profile.typingSpeedWPM}, Mouse: ${profile.mousePattern}. Redirecting...`);
       setTimeout(() => navigate('/exam'), 2000);
     }
   };
@@ -74,7 +101,7 @@ const CalibrationPage = () => {
           </div>
           <h1 className="text-2xl font-bold font-mono text-foreground">BIOMETRIC CALIBRATION</h1>
           <p className="text-sm text-muted-foreground font-mono mt-1">
-            {currentUser?.masterProfile ? 'Verify your identity' : 'Establish your keystroke baseline'}
+            {currentUser?.masterProfile ? 'Verify your identity' : 'Establish your keystroke & mouse baseline'}
           </p>
         </div>
 
@@ -101,9 +128,17 @@ const CalibrationPage = () => {
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <p className="text-xs font-mono text-muted-foreground mt-1 text-right">
-              {progress.toFixed(0)}% complete
-            </p>
+            <div className="flex items-center justify-between mt-1">
+              <div className="flex items-center gap-2">
+                <Mouse className="w-3 h-3 text-muted-foreground" />
+                <span className="text-xs font-mono text-muted-foreground">
+                  Mouse points: {mouseDataCount}
+                </span>
+              </div>
+              <p className="text-xs font-mono text-muted-foreground">
+                {progress.toFixed(0)}% complete
+              </p>
+            </div>
           </div>
 
           {/* Textarea */}
@@ -113,7 +148,7 @@ const CalibrationPage = () => {
             onKeyDown={handleKeyDown}
             onKeyUp={handleKeyUp}
             disabled={status !== 'typing'}
-            placeholder="Start typing here..."
+            placeholder="Start typing here... (move your mouse naturally while typing)"
             className="w-full h-32 bg-secondary border border-border rounded-md p-4 font-mono text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
           />
 
@@ -121,7 +156,7 @@ const CalibrationPage = () => {
           {status === 'analyzing' && (
             <div className="mt-4 flex items-center gap-2 text-primary font-mono text-sm">
               <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              Analyzing keystroke patterns...
+              Analyzing keystroke & mouse patterns...
             </div>
           )}
           {status === 'success' && (
@@ -142,7 +177,7 @@ const CalibrationPage = () => {
               disabled={!isComplete}
               className="w-full mt-4 font-mono uppercase tracking-wider"
             >
-              Analyze Keystroke Pattern
+              Analyze Biometric Pattern
             </Button>
           )}
         </div>

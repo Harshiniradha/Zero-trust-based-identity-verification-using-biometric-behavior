@@ -1,8 +1,11 @@
 export interface KeystrokeProfile {
-  avgDwellTime: number; // ms key held down
-  avgFlightTime: number; // ms between key release and next key press
+  avgDwellTime: number;
+  avgFlightTime: number;
   dwellTimes: number[];
   flightTimes: number[];
+  typingSpeedWPM: number;
+  mouseSpeed: number;
+  mousePattern: 'linear' | 'erratic' | 'smooth' | 'unknown';
 }
 
 export interface User {
@@ -22,7 +25,7 @@ export interface ViolationLog {
   reason: string;
   timestamp: string;
   riskScoreAtTermination: number;
-  sessionDuration: number; // seconds
+  sessionDuration: number;
 }
 
 export interface ExamQuestion {
@@ -31,7 +34,7 @@ export interface ExamQuestion {
   correctAnswer: string;
 }
 
-export const CALIBRATION_PARAGRAPH = "The quick brown fox jumps over the lazy dog. Security is not a product but a process. Every keystroke tells a unique story about who you are.";
+export const CALIBRATION_PARAGRAPH = "The quick brown fox jumps over the lazy dog. Security is not a product but a process. Every keystroke tells a unique story about who you are. Biometric authentication ensures that only the rightful user can access the system.";
 
 export const initialUsers: User[] = [
   {
@@ -45,6 +48,9 @@ export const initialUsers: User[] = [
       avgFlightTime: 130,
       dwellTimes: [90, 100, 88, 95, 102, 91, 98, 93, 97, 94],
       flightTimes: [125, 135, 128, 132, 127, 134, 130, 126, 133, 129],
+      typingSpeedWPM: 62,
+      mouseSpeed: 450,
+      mousePattern: 'smooth',
     },
     calibrated: true,
   },
@@ -59,6 +65,9 @@ export const initialUsers: User[] = [
       avgFlightTime: 145,
       dwellTimes: [105, 115, 108, 112, 107, 114, 110, 106, 113, 109],
       flightTimes: [140, 150, 142, 148, 141, 149, 145, 143, 147, 144],
+      typingSpeedWPM: 48,
+      mouseSpeed: 380,
+      mousePattern: 'linear',
     },
     calibrated: true,
   },
@@ -85,52 +94,52 @@ export const initialUsers: User[] = [
 export const examQuestions: ExamQuestion[] = [
   {
     id: 1,
-    question: "What is the primary purpose of a firewall in network security?",
+    question: "Explain the primary purpose of a firewall in network security and how it protects organizational infrastructure.",
     correctAnswer: "filter incoming and outgoing network traffic",
   },
   {
     id: 2,
-    question: "Which encryption algorithm is considered the most secure for symmetric encryption?",
+    question: "Describe why AES-256 is considered the most secure symmetric encryption algorithm and its key advantages.",
     correctAnswer: "AES-256",
   },
   {
     id: 3,
-    question: "What does 'Zero Trust' mean in cybersecurity?",
+    question: "Explain the concept of 'Zero Trust' in cybersecurity and why modern organizations adopt this approach.",
     correctAnswer: "never trust always verify every request",
   },
   {
     id: 4,
-    question: "Which protocol provides secure communication over the internet?",
+    question: "Describe how HTTPS and TLS protocols work together to provide secure communication over the internet.",
     correctAnswer: "HTTPS TLS",
   },
   {
     id: 5,
-    question: "What is a SQL injection attack?",
+    question: "Explain what a SQL injection attack is, how it works, and what measures can prevent it.",
     correctAnswer: "injecting malicious SQL code through input fields",
   },
   {
     id: 6,
-    question: "What is two-factor authentication (2FA)?",
+    question: "Describe two-factor authentication (2FA), its importance, and provide examples of different verification methods.",
     correctAnswer: "combining two different verification methods",
   },
   {
     id: 7,
-    question: "What does a VPN primarily provide?",
+    question: "Explain what a VPN provides, how it creates secure connections, and common use cases in enterprise environments.",
     correctAnswer: "encrypted tunnel for data transmission",
   },
   {
     id: 8,
-    question: "Which hash function is commonly used for password storage?",
+    question: "Discuss why bcrypt is commonly used for password storage and how it differs from simple hashing algorithms.",
     correctAnswer: "bcrypt",
   },
   {
     id: 9,
-    question: "What is phishing?",
+    question: "Describe phishing attacks, the social engineering techniques used, and how organizations can defend against them.",
     correctAnswer: "social engineering attack using deceptive messages",
   },
   {
     id: 10,
-    question: "What is the purpose of an Intrusion Detection System (IDS)?",
+    question: "Explain the purpose and functioning of an Intrusion Detection System (IDS) in network security monitoring.",
     correctAnswer: "monitor and alert on suspicious network activity",
   },
 ];

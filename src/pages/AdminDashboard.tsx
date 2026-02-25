@@ -1,8 +1,9 @@
 import { useExam } from '@/context/ExamContext';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Users, AlertTriangle, Activity, LogOut, UserX } from 'lucide-react';
+import { Shield, Users, AlertTriangle, Activity, LogOut, UserX, Download, Mouse } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { exportUsersToExcel } from '@/lib/exportDataset';
 
 const AdminDashboard = () => {
   const { currentUser, activeSessions, violationLogs, users, logout } = useExam();
@@ -21,8 +22,8 @@ const AdminDashboard = () => {
   const students = users.filter(u => u.role === 'student');
   const activeCount = activeSessions.filter(s => s.status === 'active').length;
   const terminatedCount = activeSessions.filter(s => s.status === 'terminated').length;
+  const calibratedCount = students.filter(s => s.calibrated).length;
 
-  // Build chart data from a session with history
   const sessionWithData = activeSessions.find(s => s.keystrokeHistory.length > 0);
   const chartData = sessionWithData?.keystrokeHistory.map((entry, i) => ({
     sample: i + 1,
@@ -48,10 +49,13 @@ const AdminDashboard = () => {
             <Shield className="w-6 h-6 text-primary" />
             <div>
               <h1 className="font-mono font-bold text-foreground text-lg">ADMIN CONSOLE</h1>
-              <p className="text-xs font-mono text-muted-foreground">Faculty Analytics Dashboard</p>
+              <p className="text-xs font-mono text-muted-foreground">Behavioral Biometric Analytics Dashboard</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <Button variant="outline" size="sm" onClick={() => exportUsersToExcel(users)} className="font-mono text-xs">
+              <Download className="w-3 h-3 mr-2" /> Export Dataset
+            </Button>
             <span className="text-sm font-mono text-muted-foreground">{currentUser.name}</span>
             <Button variant="outline" size="sm" onClick={handleLogout} className="font-mono text-xs">
               <LogOut className="w-3 h-3 mr-2" /> Logout
@@ -62,12 +66,13 @@ const AdminDashboard = () => {
 
       <div className="max-w-7xl mx-auto p-6 space-y-6">
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           {[
             { label: 'Total Students', value: students.length, icon: Users, color: 'text-primary' },
+            { label: 'Calibrated', value: calibratedCount, icon: Mouse, color: 'text-primary' },
             { label: 'Active Sessions', value: activeCount, icon: Activity, color: 'text-success' },
             { label: 'Terminated', value: terminatedCount, icon: UserX, color: 'text-destructive' },
-            { label: 'Violations Logged', value: violationLogs.length, icon: AlertTriangle, color: 'text-warning' },
+            { label: 'Violations', value: violationLogs.length, icon: AlertTriangle, color: 'text-warning' },
           ].map((stat) => (
             <div key={stat.label} className="bg-card border border-border rounded-lg p-5">
               <div className="flex items-center justify-between mb-2">
@@ -77,6 +82,55 @@ const AdminDashboard = () => {
               <p className={`text-3xl font-bold font-mono ${stat.color}`}>{stat.value}</p>
             </div>
           ))}
+        </div>
+
+        {/* User Dataset Table */}
+        <div className="bg-card border border-border rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-mono font-semibold text-foreground flex items-center gap-2">
+              <Mouse className="w-4 h-4 text-primary" /> Biometric Dataset
+            </h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm font-mono">
+              <thead>
+                <tr className="border-b border-border text-muted-foreground">
+                  <th className="text-left py-3 px-2">User_ID</th>
+                  <th className="text-left py-3 px-2">Name</th>
+                  <th className="text-left py-3 px-2">WPM</th>
+                  <th className="text-left py-3 px-2">Dwell (ms)</th>
+                  <th className="text-left py-3 px-2">Flight (ms)</th>
+                  <th className="text-left py-3 px-2">Mouse Speed</th>
+                  <th className="text-left py-3 px-2">Pattern</th>
+                  <th className="text-left py-3 px-2">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {students.map(u => (
+                  <tr key={u.id} className="border-b border-border/50 hover:bg-secondary/50">
+                    <td className="py-3 px-2 text-primary">{u.id}</td>
+                    <td className="py-3 px-2 text-foreground">{u.name}</td>
+                    <td className="py-3 px-2 text-foreground">{u.masterProfile?.typingSpeedWPM ?? '—'}</td>
+                    <td className="py-3 px-2 text-foreground">{u.masterProfile?.avgDwellTime.toFixed(1) ?? '—'}</td>
+                    <td className="py-3 px-2 text-foreground">{u.masterProfile?.avgFlightTime.toFixed(1) ?? '—'}</td>
+                    <td className="py-3 px-2 text-foreground">{u.masterProfile?.mouseSpeed ?? '—'}</td>
+                    <td className="py-3 px-2">
+                      {u.masterProfile?.mousePattern ? (
+                        <span className="px-2 py-0.5 rounded text-xs bg-primary/10 text-primary border border-primary/30">
+                          {u.masterProfile.mousePattern}
+                        </span>
+                      ) : '—'}
+                    </td>
+                    <td className="py-3 px-2">
+                      <span className={`px-2 py-0.5 rounded text-xs ${u.calibrated ? 'bg-success/10 text-success border border-success/30' : 'bg-warning/10 text-warning border border-warning/30'}`}>
+                        {u.calibrated ? 'Calibrated' : 'Pending'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Session Health */}
@@ -123,7 +177,7 @@ const AdminDashboard = () => {
         {/* Chart */}
         <div className="bg-card border border-border rounded-lg p-6">
           <h2 className="font-mono font-semibold text-foreground mb-4">
-            Typing Consistency — Baseline vs Current
+            Behavioral Consistency — Baseline vs Current
           </h2>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
