@@ -11,7 +11,7 @@ const ExamPage = () => {
   const { currentUser, addViolationLog, startSession, updateSessionRisk, terminateSession, logout } = useExam();
   const navigate = useNavigate();
 
-  const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [answers, setAnswers] = useState<Record<number, string>>({});
   const [riskScore, setRiskScore] = useState(0);
   const [violated, setViolated] = useState(false);
   const [violationReason, setViolationReason] = useState('');
@@ -140,8 +140,8 @@ const ExamPage = () => {
     return () => clearInterval(interval);
   }, [currentUser, updateSessionRisk, autoTerminate]);
 
-  const handleSelectAnswer = (questionId: number, optionIdx: number) => {
-    setAnswers(prev => ({ ...prev, [questionId]: optionIdx }));
+  const handleAnswerChange = (questionId: number, value: string) => {
+    setAnswers(prev => ({ ...prev, [questionId]: value }));
   };
 
   const handleSubmit = () => {
@@ -160,7 +160,7 @@ const ExamPage = () => {
   }
 
   if (submitted) {
-    const score = examQuestions.reduce((acc, q) => acc + (answers[q.id] === q.correctAnswer ? 1 : 0), 0);
+    const score = examQuestions.reduce((acc, q) => acc + ((answers[q.id] || '').toLowerCase().trim().includes(q.correctAnswer.toLowerCase().trim()) ? 1 : 0), 0);
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center animate-slide-up">
@@ -222,22 +222,13 @@ const ExamPage = () => {
             <div key={q.id} className="bg-card border border-border rounded-lg p-6 animate-slide-up" style={{ animationDelay: `${qi * 0.05}s` }}>
               <p className="font-mono text-sm text-primary mb-1">Question {q.id}</p>
               <p className="text-foreground font-medium mb-4">{q.question}</p>
-              <div className="space-y-2">
-                {q.options.map((opt, oi) => (
-                  <button
-                    key={oi}
-                    onClick={() => handleSelectAnswer(q.id, oi)}
-                    className={`w-full text-left p-3 rounded-md border font-mono text-sm transition-all ${
-                      answers[q.id] === oi
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-border bg-secondary text-secondary-foreground hover:border-primary/50'
-                    }`}
-                  >
-                    <span className="mr-3 text-muted-foreground">{String.fromCharCode(65 + oi)}.</span>
-                    {opt}
-                  </button>
-                ))}
-              </div>
+              <input
+                type="text"
+                value={answers[q.id] || ''}
+                onChange={(e) => handleAnswerChange(q.id, e.target.value)}
+                placeholder="Type your answer..."
+                className="w-full p-3 rounded-md border border-border bg-secondary text-foreground font-mono text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
+              />
             </div>
           ))}
         </div>
@@ -247,7 +238,7 @@ const ExamPage = () => {
       <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border px-4 py-3 z-50">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <span className="font-mono text-xs text-muted-foreground">
-            {Object.keys(answers).length}/{examQuestions.length} answered
+            {Object.values(answers).filter(a => a.trim().length > 0).length}/{examQuestions.length} answered
           </span>
           <Button onClick={handleSubmit} className="font-mono uppercase tracking-wider">
             Submit Exam
