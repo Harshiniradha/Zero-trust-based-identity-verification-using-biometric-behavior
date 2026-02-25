@@ -10,14 +10,17 @@ const ViolationOverlay = ({ reason }: ViolationOverlayProps) => {
       <div className="text-center text-destructive-foreground">
         <XOctagon className="w-24 h-24 mx-auto mb-6" />
         <h1 className="text-4xl font-bold font-mono mb-4 tracking-wider">
-          SECURITY VIOLATION
+          EXAM TERMINATED
         </h1>
+        <h2 className="text-2xl font-bold font-mono mb-6">
+          Due To Suspicious Behavior
+        </h2>
         <div className="bg-destructive-foreground/10 border border-destructive-foreground/30 rounded-lg px-8 py-4 mb-6 inline-block">
           <p className="font-mono text-lg">{reason}</p>
         </div>
         <div className="flex items-center justify-center gap-2 mb-4">
           <ShieldAlert className="w-5 h-5" />
-          <p className="font-mono text-sm">Session terminated. Incident logged.</p>
+          <p className="font-mono text-sm">Session terminated. Incident logged to database.</p>
         </div>
         <p className="font-mono text-xs opacity-70">
           Redirecting to login in 5 seconds...

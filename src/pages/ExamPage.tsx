@@ -2,8 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useExam } from '@/context/ExamContext';
 import { examQuestions } from '@/data/mockData';
-import { captureKeystrokeProfile, compareProfiles, calculateRiskIncrease, KeyEvent } from '@/lib/keystrokeAnalyzer';
-import { Shield, AlertTriangle, Clock, Activity } from 'lucide-react';
+import { captureKeystrokeProfile, compareProfiles, calculateRiskIncrease, KeyEvent, MouseEvent2 } from '@/lib/keystrokeAnalyzer';
+import { Shield, AlertTriangle, Clock, Activity, Mouse } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ViolationOverlay from '@/components/ViolationOverlay';
 
@@ -17,9 +17,12 @@ const ExamPage = () => {
   const [violationReason, setViolationReason] = useState('');
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [submitted, setSubmitted] = useState(false);
+  const [mouseSpeed, setMouseSpeed] = useState(0);
   const keystrokeBuffer = useRef<KeyEvent[]>([]);
+  const mouseBuffer = useRef<MouseEvent2[]>([]);
   const startTimeRef = useRef(Date.now());
   const riskRef = useRef(0);
+  const checkStartRef = useRef(performance.now());
 
   const autoTerminate = useCallback((reason: string) => {
     if (violated) return;
@@ -48,6 +51,7 @@ const ExamPage = () => {
   useEffect(() => {
     if (currentUser) {
       startSession(currentUser.id, currentUser.name);
+      checkStartRef.current = performance.now();
     }
   }, [currentUser, startSession]);
 
@@ -59,10 +63,7 @@ const ExamPage = () => {
 
   // Fullscreen
   useEffect(() => {
-    const enterFullscreen = () => {
-      document.documentElement.requestFullscreen?.().catch(() => {});
-    };
-    enterFullscreen();
+    document.documentElement.requestFullscreen?.().catch(() => {});
     return () => { document.exitFullscreen?.().catch(() => {}); };
   }, []);
 
@@ -116,12 +117,37 @@ const ExamPage = () => {
     };
   }, []);
 
-  // Periodic biometric check
+  // Mouse movement monitoring
+  useEffect(() => {
+    let lastTime = 0;
+    const handleMouseMove = (e: globalThis.MouseEvent) => {
+      const now = performance.now();
+      if (now - lastTime > 50) {
+        lastTime = now;
+        mouseBuffer.current.push({ x: e.clientX, y: e.clientY, timestamp: now });
+        // Calculate live mouse speed
+        const len = mouseBuffer.current.length;
+        if (len > 1) {
+          const prev = mouseBuffer.current[len - 2];
+          const curr = mouseBuffer.current[len - 1];
+          const dx = curr.x - prev.x;
+          const dy = curr.y - prev.y;
+          const dt = curr.timestamp - prev.timestamp;
+          if (dt > 0) setMouseSpeed(Math.round(Math.sqrt(dx * dx + dy * dy) / dt * 1000));
+        }
+      }
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    return () => document.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
+  // Periodic biometric check (keystroke + mouse)
   useEffect(() => {
     const interval = setInterval(() => {
       if (!currentUser?.masterProfile || keystrokeBuffer.current.length < 10) return;
 
-      const currentProfile = captureKeystrokeProfile(keystrokeBuffer.current);
+      const durationMs = performance.now() - checkStartRef.current;
+      const currentProfile = captureKeystrokeProfile(keystrokeBuffer.current, mouseBuffer.current, durationMs);
       const result = compareProfiles(currentUser.masterProfile, currentProfile);
       const increase = calculateRiskIncrease(result.overallDeviation);
       
@@ -131,10 +157,12 @@ const ExamPage = () => {
       updateSessionRisk(currentUser.id, newRisk, result.overallDeviation);
 
       if (newRisk >= 100) {
-        autoTerminate('Biometric Mismatch - Risk Score 100%');
+        autoTerminate('Exam Terminated Due To Suspicious Behavior');
       }
 
       keystrokeBuffer.current = [];
+      mouseBuffer.current = [];
+      checkStartRef.current = performance.now();
     }, 5000);
 
     return () => clearInterval(interval);
@@ -155,9 +183,7 @@ const ExamPage = () => {
 
   const formatTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
-  if (violated) {
-    return <ViolationOverlay reason={violationReason} />;
-  }
+  if (violated) return <ViolationOverlay reason={violationReason} />;
 
   if (submitted) {
     const score = examQuestions.reduce((acc, q) => acc + ((answers[q.id] || '').toLowerCase().trim().includes(q.correctAnswer.toLowerCase().trim()) ? 1 : 0), 0);
@@ -188,6 +214,10 @@ const ExamPage = () => {
               <span className="font-mono text-sm text-foreground">{formatTime(timeElapsed)}</span>
             </div>
             <div className="flex items-center gap-2">
+              <Mouse className="w-4 h-4 text-muted-foreground" />
+              <span className="font-mono text-xs text-muted-foreground">{mouseSpeed} px/s</span>
+            </div>
+            <div className="flex items-center gap-2">
               <Activity className="w-4 h-4 text-muted-foreground" />
               <span className="font-mono text-xs text-muted-foreground">RISK:</span>
               <div className="w-24 h-2 bg-secondary rounded-full overflow-hidden">
@@ -213,7 +243,7 @@ const ExamPage = () => {
         <div className="flex items-center gap-2 mb-6">
           <AlertTriangle className="w-4 h-4 text-warning" />
           <p className="text-xs font-mono text-warning">
-            WARNING: Tab switching, window blur, or biometric mismatch will terminate your session.
+            WARNING: Tab switching, window blur, or biometric/mouse mismatch will terminate your session.
           </p>
         </div>
 
@@ -222,12 +252,12 @@ const ExamPage = () => {
             <div key={q.id} className="bg-card border border-border rounded-lg p-6 animate-slide-up" style={{ animationDelay: `${qi * 0.05}s` }}>
               <p className="font-mono text-sm text-primary mb-1">Question {q.id}</p>
               <p className="text-foreground font-medium mb-4">{q.question}</p>
-              <input
-                type="text"
+              <textarea
                 value={answers[q.id] || ''}
                 onChange={(e) => handleAnswerChange(q.id, e.target.value)}
-                placeholder="Type your answer..."
-                className="w-full p-3 rounded-md border border-border bg-secondary text-foreground font-mono text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
+                placeholder="Type your detailed answer here..."
+                rows={4}
+                className="w-full p-3 rounded-md border border-border bg-secondary text-foreground font-mono text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all resize-none"
               />
             </div>
           ))}
