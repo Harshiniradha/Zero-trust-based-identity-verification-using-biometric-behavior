@@ -99,6 +99,8 @@ export function ExamProvider({ children }: { children: ReactNode }) {
 
 export function useExam() {
   const ctx = useContext(ExamContext);
-  if (!ctx) throw new Error('useExam must be used within ExamProvider');
+  if (!ctx) {
+    throw new Error('useExam must be used within ExamProvider');
+  }
   return ctx;
 }
