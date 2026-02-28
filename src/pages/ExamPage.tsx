@@ -225,6 +225,27 @@ const ExamPage = () => {
                 active={!violated && !submitted}
                 onSnapshot={(snap) => setSnapshots(prev => [...prev, snap])}
                 onError={(err) => console.warn('Webcam proctoring error:', err)}
+                onFaceAnomaly={(status, count) => {
+                  if (currentUser) {
+                    addViolationLog({
+                      userId: currentUser.id,
+                      userName: currentUser.name,
+                      reason: status === 'no_face'
+                        ? 'Face Detection: No face visible'
+                        : `Face Detection: ${count} faces detected`,
+                      timestamp: new Date().toISOString(),
+                      riskScoreAtTermination: riskRef.current,
+                      sessionDuration: Math.floor((Date.now() - startTimeRef.current) / 1000),
+                    });
+                    const newRisk = Math.min(riskRef.current + 15, 100);
+                    riskRef.current = newRisk;
+                    setRiskScore(newRisk);
+                    updateSessionRisk(currentUser.id, newRisk, 0);
+                    if (newRisk >= 100) {
+                      autoTerminate('Session terminated: Repeated face detection anomalies');
+                    }
+                  }
+                }}
               />
             </div>
             <div className="flex items-center gap-2">
