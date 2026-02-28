@@ -98,10 +98,7 @@ const LoginPage = () => {
 
           <div className="mt-6 pt-4 border-t border-border">
             <p className="text-xs text-muted-foreground font-mono text-center">
-              Demo: alex@university.edu / exam2024 (student)
-            </p>
-            <p className="text-xs text-muted-foreground font-mono text-center mt-1">
-              Demo: admin@university.edu / admin2024 (faculty)
+              Contact your administrator for access credentials.
             </p>
           </div>
         </div>
