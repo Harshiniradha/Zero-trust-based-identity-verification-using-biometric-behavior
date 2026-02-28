@@ -254,11 +254,20 @@ const ExamPage = () => {
               <p className="text-foreground font-medium mb-4">{q.question}</p>
               <textarea
                 value={answers[q.id] || ''}
-                onChange={(e) => handleAnswerChange(q.id, e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value.length <= 5000) {
+                    handleAnswerChange(q.id, value);
+                  }
+                }}
                 placeholder="Type your detailed answer here..."
                 rows={4}
+                maxLength={5000}
                 className="w-full p-3 rounded-md border border-border bg-secondary text-foreground font-mono text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all resize-none"
               />
+              <p className="text-xs font-mono text-muted-foreground mt-1 text-right">
+                {(answers[q.id] || '').length}/5000
+              </p>
             </div>
           ))}
         </div>
