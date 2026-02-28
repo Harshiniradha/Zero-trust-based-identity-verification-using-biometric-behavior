@@ -6,6 +6,7 @@ import { captureKeystrokeProfile, compareProfiles, calculateRiskIncrease, KeyEve
 import { Shield, AlertTriangle, Clock, Activity, Mouse } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ViolationOverlay from '@/components/ViolationOverlay';
+import WebcamProctor, { Snapshot } from '@/components/WebcamProctor';
 
 const ExamPage = () => {
   const { currentUser, addViolationLog, startSession, updateSessionRisk, terminateSession, logout } = useExam();
@@ -18,6 +19,7 @@ const ExamPage = () => {
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [mouseSpeed, setMouseSpeed] = useState(0);
+  const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const keystrokeBuffer = useRef<KeyEvent[]>([]);
   const mouseBuffer = useRef<MouseEvent2[]>([]);
   const startTimeRef = useRef(Date.now());
@@ -216,6 +218,14 @@ const ExamPage = () => {
             <div className="flex items-center gap-2">
               <Mouse className="w-4 h-4 text-muted-foreground" />
               <span className="font-mono text-xs text-muted-foreground">{mouseSpeed} px/s</span>
+            </div>
+            <div className="relative">
+              <WebcamProctor
+                intervalMs={30000}
+                active={!violated && !submitted}
+                onSnapshot={(snap) => setSnapshots(prev => [...prev, snap])}
+                onError={(err) => console.warn('Webcam proctoring error:', err)}
+              />
             </div>
             <div className="flex items-center gap-2">
               <Activity className="w-4 h-4 text-muted-foreground" />
