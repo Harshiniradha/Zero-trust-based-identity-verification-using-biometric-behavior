@@ -211,6 +211,17 @@ const ExamPage = () => {
             <span className="font-mono text-sm text-foreground font-semibold">SECURE EXAM</span>
           </div>
           <div className="flex items-center gap-6">
+            {/* Recording indicator */}
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive"></span>
+              </span>
+              <span className="font-mono text-xs text-destructive font-semibold">REC</span>
+              <span className="font-mono text-xs text-muted-foreground">
+                {snapshots.length} snaps {snapshots.length > 0 && `· ${new Date(snapshots[snapshots.length - 1].timestamp).toLocaleTimeString()}`}
+              </span>
+            </div>
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-muted-foreground" />
               <span className="font-mono text-sm text-foreground">{formatTime(timeElapsed)}</span>
@@ -219,7 +230,7 @@ const ExamPage = () => {
               <Mouse className="w-4 h-4 text-muted-foreground" />
               <span className="font-mono text-xs text-muted-foreground">{mouseSpeed} px/s</span>
             </div>
-            <div className="relative">
+            <div className="hidden">
               <WebcamProctor
                 intervalMs={30000}
                 active={!violated && !submitted}
@@ -301,6 +312,31 @@ const ExamPage = () => {
               </p>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Webcam preview - bottom right */}
+      <div className="fixed bottom-16 right-4 z-50 rounded-lg overflow-hidden border-2 border-success shadow-lg" style={{ width: 160, height: 120 }}>
+        <video
+          ref={(el) => {
+            if (el && !el.srcObject) {
+              navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+                el.srcObject = stream;
+                el.play();
+              }).catch(() => {});
+            }
+          }}
+          autoPlay
+          muted
+          playsInline
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute top-1 left-1 flex items-center gap-1 bg-background/80 rounded px-1.5 py-0.5">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-destructive"></span>
+          </span>
+          <span className="font-mono text-[9px] text-destructive font-semibold">LIVE</span>
         </div>
       </div>
 
