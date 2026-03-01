@@ -1,16 +1,26 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useExam } from '@/context/ExamContext';
-import { Shield, Lock, AlertTriangle } from 'lucide-react';
+import { Shield, Lock, AlertTriangle, Camera, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { login } = useExam();
+  const [showCamDialog, setShowCamDialog] = useState(false);
+  const [camStatus, setCamStatus] = useState<'idle' | 'requesting' | 'granted' | 'denied'>('idle');
+  const { login, setWebcamApproved } = useExam();
   const navigate = useNavigate();
+  const authenticatedUserRef = useRef<{ role: string; calibrated: boolean } | null>(null);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,17 +32,43 @@ const LoginPage = () => {
     }
     if (user.role === 'admin') {
       navigate('/admin');
-    } else if (!user.calibrated) {
-      navigate('/calibration');
-    } else {
-      navigate('/exam');
+      return;
+    }
+    // For students, show webcam permission dialog
+    authenticatedUserRef.current = { role: user.role, calibrated: user.calibrated };
+    setCamStatus('idle');
+    setShowCamDialog(true);
+  };
+
+  const requestWebcamPermission = async () => {
+    setCamStatus('requesting');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      // Permission granted — stop the stream immediately (no capturing yet)
+      stream.getTracks().forEach(track => track.stop());
+      setCamStatus('granted');
+      setWebcamApproved(true);
+    } catch {
+      setCamStatus('denied');
+    }
+  };
+
+  const handleProceed = () => {
+    setShowCamDialog(false);
+    const user = authenticatedUserRef.current;
+    if (user) {
+      if (!user.calibrated) {
+        navigate('/calibration');
+      } else {
+        navigate('/exam');
+      }
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background grid-bg relative overflow-hidden">
       <div className="scanline absolute inset-0 pointer-events-none z-10" />
-      
+
       <div className="w-full max-w-md mx-4 animate-slide-up relative z-20">
         {/* Header */}
         <div className="text-center mb-8">
@@ -103,6 +139,82 @@ const LoginPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Webcam Permission Dialog */}
+      <Dialog open={showCamDialog} onOpenChange={(open) => {
+        if (!open && camStatus !== 'granted') {
+          // If closing without granting, reset
+          setShowCamDialog(false);
+        }
+      }}>
+        <DialogContent className="bg-card border-border font-mono max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-foreground font-mono">
+              <Camera className="w-5 h-5 text-primary" />
+              Webcam Access Required
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground font-mono text-sm">
+              This exam requires webcam proctoring. Please grant camera access to proceed.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-2">
+            {camStatus === 'idle' && (
+              <Button
+                onClick={requestWebcamPermission}
+                className="w-full font-mono uppercase tracking-wider"
+              >
+                <Camera className="w-4 h-4 mr-2" />
+                Allow Camera Access
+              </Button>
+            )}
+
+            {camStatus === 'requesting' && (
+              <div className="flex items-center justify-center gap-2 py-4 text-primary">
+                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm">Requesting permission...</span>
+              </div>
+            )}
+
+            {camStatus === 'granted' && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 p-3 rounded-md bg-success/10 border border-success/30">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                  <span className="text-sm text-success">Camera access granted</span>
+                </div>
+                <Button
+                  onClick={handleProceed}
+                  className="w-full font-mono uppercase tracking-wider"
+                >
+                  <Camera className="w-4 h-4 mr-2 text-success" />
+                  Start Exam
+                </Button>
+              </div>
+            )}
+
+            {camStatus === 'denied' && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 p-3 rounded-md bg-destructive/10 border border-destructive/30">
+                  <AlertTriangle className="w-4 h-4 text-destructive" />
+                  <span className="text-sm text-destructive">
+                    Webcam access is required to attend the exam.
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Please enable camera permissions in your browser settings and try again.
+                </p>
+                <Button
+                  onClick={requestWebcamPermission}
+                  variant="outline"
+                  className="w-full font-mono uppercase tracking-wider"
+                >
+                  Retry
+                </Button>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

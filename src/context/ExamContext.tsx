@@ -15,8 +15,10 @@ interface ExamContextType {
   currentUser: User | null;
   violationLogs: ViolationLog[];
   activeSessions: ActiveSession[];
+  webcamApproved: boolean;
   login: (email: string, password: string) => User | null;
   logout: () => void;
+  setWebcamApproved: (approved: boolean) => void;
   updateUserProfile: (userId: string, profile: KeystrokeProfile) => void;
   markCalibrated: (userId: string) => void;
   addViolationLog: (log: Omit<ViolationLog, 'id'>) => void;
@@ -32,6 +34,7 @@ export function ExamProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [violationLogs, setViolationLogs] = useState<ViolationLog[]>([]);
   const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([]);
+  const [webcamApproved, setWebcamApproved] = useState(false);
 
   const login = useCallback((email: string, password: string): User | null => {
     const user = users.find(u => u.email === email && u.password === password);
@@ -88,8 +91,8 @@ export function ExamProvider({ children }: { children: ReactNode }) {
 
   return (
     <ExamContext.Provider value={{
-      users, currentUser, violationLogs, activeSessions,
-      login, logout, updateUserProfile, markCalibrated,
+      users, currentUser, violationLogs, activeSessions, webcamApproved,
+      login, logout, setWebcamApproved, updateUserProfile, markCalibrated,
       addViolationLog, startSession, updateSessionRisk, terminateSession,
     }}>
       {children}
