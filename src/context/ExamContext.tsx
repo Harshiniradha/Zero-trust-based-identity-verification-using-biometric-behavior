@@ -32,7 +32,35 @@ const ExamContext = createContext<ExamContextType | null>(null);
 export function ExamProvider({ children }: { children: ReactNode }) {
   const [users, setUsers] = useState<User[]>(initialUsers);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [violationLogs, setViolationLogs] = useState<ViolationLog[]>([]);
+  const [violationLogs, setViolationLogs] = useState<ViolationLog[]>([
+    {
+      id: 'VIO-SAMPLE-1',
+      userId: 'STU-002',
+      userName: 'Ravi Kumar',
+      reason: 'Keystroke pattern deviation exceeded threshold (87%)',
+      timestamp: new Date(Date.now() - 3600000).toISOString(),
+      riskScoreAtTermination: 87,
+      sessionDuration: 1240,
+    },
+    {
+      id: 'VIO-SAMPLE-2',
+      userId: 'STU-003',
+      userName: 'Priya Sharma',
+      reason: 'Multiple face anomalies detected',
+      timestamp: new Date(Date.now() - 7200000).toISOString(),
+      riskScoreAtTermination: 92,
+      sessionDuration: 680,
+    },
+    {
+      id: 'VIO-SAMPLE-3',
+      userId: 'STU-005',
+      userName: 'Arun Patel',
+      reason: 'Tab switch detected during exam',
+      timestamp: new Date(Date.now() - 1800000).toISOString(),
+      riskScoreAtTermination: 75,
+      sessionDuration: 420,
+    },
+  ]);
   const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([]);
   const [webcamApproved, setWebcamApproved] = useState(false);
 
