@@ -1,73 +1,93 @@
-# Welcome to your Lovable project
+# 🔐 Zero Trust Identity Verification using Biometric Behavior
 
-## Project info
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![Machine Learning](https://img.shields.io/badge/Scikit--learn-F7931E?style=for-the-badge&logo=scikitlearn&logoColor=white)
+![Security](https://img.shields.io/badge/Zero%20Trust-Security-red?style=for-the-badge)
+![Jupyter](https://img.shields.io/badge/Jupyter-F37626?style=for-the-badge&logo=jupyter&logoColor=white)
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+A security system built on the **"never trust, always verify"** principle. Continuously verifies user identity by analysing behavioural biometrics — keystroke dynamics and mouse movement patterns — using ML anomaly detection in real time.
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+## 🔍 What This Does
 
-**Use Lovable**
+Traditional authentication verifies identity **once at login**. This system continuously monitors user behaviour throughout a session — flagging anomalies that suggest impersonation or unauthorised access without requiring additional hardware.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+---
 
-Changes made via Lovable will be committed automatically to this repo.
+## 🛠 Tech Stack
 
-**Use your preferred IDE**
+| Tool | Purpose |
+|---|---|
+| Python | Core pipeline development |
+| Scikit-learn | ML model training and evaluation |
+| Pandas / NumPy | Data processing and feature engineering |
+| Anomaly Detection | Statistical deviation modelling |
+| Biometric Signal Processing | Keystroke dynamics, mouse movement analysis |
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+---
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## 🏗 System Architecture
+User Interaction
+↓
+Data Collection (Keystroke timing, Mouse movement)
+↓
+Feature Engineering (Timing intervals, velocity, pressure patterns)
+↓
+Baseline Profile Training (per user)
+↓
+Real-time Anomaly Detection
 
-Follow these steps:
+↓---
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## 📊 Key Results
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+- ✅ Continuous identity verification without additional hardware
+- ✅ Real-time anomaly flagging with low false positive rate
+- ✅ Reduced reliance on single-point authentication
+- ✅ Significantly lowered identity fraud and impersonation risk on exam platforms
 
-# Step 3: Install the necessary dependencies.
-npm i
+---
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+## 🔑 Key Concepts
+
+**Zero Trust Security** — Never trust any user or device by default, even inside the network. Always verify continuously.
+
+**Behavioural Biometrics** — Each person has a unique way of typing and moving a mouse. These patterns are nearly impossible to replicate.
+
+**Anomaly Detection** — ML models learn a user's normal behaviour and flag sessions that deviate significantly from the baseline.
+
+---
+
+## ▶️ How to Run
+
+1. Clone the repo:
+```bash
+git clone https://github.com/Harshiniradha/Zero-trust-based-identity-verification-using-biometric-behavior.git
 ```
 
-**Edit a file directly in GitHub**
+2. Install dependencies:
+```bash
+pip install pandas numpy scikit-learn matplotlib seaborn jupyter
+```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+3. Open the notebook:
+```bash
+jupyter notebook main.ipynb
+```
 
-**Use GitHub Codespaces**
+---
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## 🎓 Context
 
-## What technologies are used for this project?
+This project was developed as a **research internship project** at Thirvu Soft Pvt Ltd (Dec 2025 – Apr 2026) and as an academic research project at PSGR Krishnammal College for Women, Bharathiar University.
 
-This project is built with:
+---
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## 📬 Connect
 
-## How can I deploy this project?
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/in/harshini-r-b9558a336)
+[![Gmail](https://img.shields.io/badge/Gmail-EA4335?style=for-the-badge&logo=gmail&logoColor=white)](mailto:harshiniradhakrishnan25@gmail.com)
+[![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Harshiniradha)
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Flag / Re-authenticate / Terminate session
